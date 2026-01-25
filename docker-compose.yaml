@@ -26,16 +26,25 @@ services:
       - "443:443/tcp"
     environment:
       TZ: "Europe/Berlin"
-      FTLCONF_webserver_api_password: "correct horse battery staple" # better to move this to a .env file
+      FTLCONF_webserver_api_password: ${WEB_PASSWORD}
       FTLCONF_dns_listeningMode: "ALL"
-      FTLCONF_dns_upstreams: "172.20.0.3#5335"
+      FTLCONF_dns_upstreams: "unbound#5335"
 
     volumes:
-      - ./pihole_etc:/etc/pihole
+      - ./pihole:/etc/pihole
       # Uncomment the below if you have custom dnsmasq config files that you want to persist. Not needed for most starting fresh with Pi-hole v6. If you're upgrading from v5 you and have used this directory before, you should keep it enabled for the first v6 container start to allow for a complete migration. It can be removed afterwards. Needs environment variable FTLCONF_misc_etc_dnsmasq_d: 'true'
       #- './etc-dnsmasq.d:/etc/dnsmasq.d'
+    
+    # based on https://docs.pi-hole.net/docker/#note-on-capabilities
     cap_add:
-      - NET_ADMIN
+      - CAP_NET_BIND_SERVICE
+      - CAP_NET_RAW
+      - CAP_NET_ADMIN
+      - CAP_SYS_NICE
+      - CAP_CHOWN
+      - CAP_SYS_TIME
+      # Required if you are using Pi-hole as your DHCP server, else not needed
+      #- NET_ADMIN 
     depends_on:
       - unbound
     restart: unless-stopped
@@ -49,9 +58,14 @@ services:
     networks:
       dns_internal:
         ipv4_address: 172.20.0.3
+    ports:
+      - 5335:5335 # based on `unbound/custom.conf.d/00-listen.conf`
+      - "53:53/tcp"
+      - "53:53/udp"
     volumes:
       # klutchell/unbound reads custom *.conf files from this directory
       - ./unbound/custom.conf.d:/etc/unbound/custom.conf.d:ro
+      - ./unbound/logs:/var/log/unbound
     restart: unless-stopped
 
   redis:
@@ -60,6 +74,8 @@ services:
     networks:
       dns_internal:
         ipv4_address: 172.20.0.4
+    ports:
+      - 6379:6379 # based on `unbound/custom.conf.d/cachedb.conf`
     volumes:
       - redis-data:/data
     command: ["redis-server", "--appendonly", "yes"]
