@@ -60,8 +60,6 @@ services:
         ipv4_address: 172.20.0.3
     ports:
       - 5335:5335 # based on `unbound/custom.conf.d/00-listen.conf`
-      - "53:53/tcp"
-      - "53:53/udp"
     volumes:
       # klutchell/unbound reads custom *.conf files from this directory
       - ./unbound/custom.conf.d:/etc/unbound/custom.conf.d:ro
