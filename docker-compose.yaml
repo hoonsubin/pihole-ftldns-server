@@ -1,20 +1,11 @@
 networks:
-  pihole_lan:
-    driver: macvlan
-    driver_opts:
-      parent: eth0
-    ipam:
-      config:
-        - subnet: 192.168.8.0/24
-          gateway: 192.168.8.1
-          ip_range: 192.168.8.14/32
-
   dns_internal:
     driver: bridge
     ipam:
       config:
         - subnet: 172.20.0.0/24
-
+  local_bridge:
+    driver: bridge
 
 services:
   pihole:
@@ -22,16 +13,23 @@ services:
     container_name: pihole
     hostname: pihole
     networks:
-      pihole_lan:
-        ipv4_address: 192.168.8.14
+      local_bridge:
       dns_internal:
         ipv4_address: 172.20.0.2
+    ports:
+      # DNS Ports
+      - "53:53/tcp"
+      - "53:53/udp"
+      # Default HTTP Port
+      - "80:80/tcp"
+      # Default HTTPs Port. FTL will generate a self-signed certificate
+      - "443:443/tcp"
     environment:
       TZ: "Europe/Berlin"
-      FTLCONF_webserver_api_password: "correct horse battery staple"
+      FTLCONF_webserver_api_password: "correct horse battery staple" # better to move this to a .env file
       FTLCONF_dns_listeningMode: "ALL"
       FTLCONF_dns_upstreams: "172.20.0.3#5335"
-      ServerIP: "192.168.8.14"
+
     volumes:
       - ./pihole_etc:/etc/pihole
       # Uncomment the below if you have custom dnsmasq config files that you want to persist. Not needed for most starting fresh with Pi-hole v6. If you're upgrading from v5 you and have used this directory before, you should keep it enabled for the first v6 container start to allow for a complete migration. It can be removed afterwards. Needs environment variable FTLCONF_misc_etc_dnsmasq_d: 'true'
@@ -39,9 +37,8 @@ services:
     cap_add:
       - NET_ADMIN
     depends_on:
-     - unbound
+      - unbound
     restart: unless-stopped
-    
 
   unbound:
     image: klutchell/unbound:latest
