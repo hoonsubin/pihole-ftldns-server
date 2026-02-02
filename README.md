@@ -30,6 +30,7 @@ You can also try the same command using the pi-hole's address to check if it wor
 ```bash
 # note that this will default to port 53, whilst the unbound instance running within the container must use port 5335 to prevent any conflicts
 dig +ad dnssec.works @pihole-ip
+You can check the unbound resolver with the following command from the host machine:
 ```
 
 ## References
